@@ -1,4 +1,4 @@
-use based16::{Encoder, Decoder};
+use based16::{Encoder, Decoder, CharPair, hex_lower, hex_upper};
 
 const ALL: [u8; 256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
@@ -27,12 +27,14 @@ fn should_convert_hex_and_back_upper() {
     let encoder = Encoder::upper(&ALL);
     let mut all_upper = ALL_UPPER.as_bytes().chunks(2);
 
-    let output = encoder.to_string();
+    let mut output = encoder.to_string();
+    assert_eq!(ALL_UPPER, output);
+    output = hex_upper(ALL).iter().map(CharPair::as_str).collect::<String>();
     assert_eq!(ALL_UPPER, output);
 
     for pair in encoder {
         let expected = all_upper.next().expect("to have more expected data");
-        assert_eq!(pair.as_ref().as_bytes(), expected);
+        assert_eq!(expected, pair.as_bytes());
     }
 
     let decoder = Decoder::new(&output).expect("To have valid output");
@@ -46,12 +48,14 @@ fn should_convert_hex_and_back_lower() {
     let encoder = Encoder::lower(&ALL);
     let mut all_lower = ALL_LOWER.as_bytes().chunks(2);
 
-    let output = encoder.to_string();
+    let mut output = encoder.to_string();
+    assert_eq!(ALL_LOWER, output);
+    output = hex_lower(ALL).iter().map(CharPair::as_str).collect::<String>();
     assert_eq!(ALL_LOWER, output);
 
     for pair in encoder {
         let expected = all_lower.next().expect("to have more expected data");
-        assert_eq!(pair.as_ref().as_bytes(), expected);
+        assert_eq!(expected, pair.as_bytes());
     }
 
     let decoder = Decoder::new(&output).expect("To have valid output");

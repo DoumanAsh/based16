@@ -1,26 +1,132 @@
 //!Simple Base-16 (aka hexidecimal) encoding
 
-//#![no_std]
+#![no_std]
 #![warn(missing_docs)]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::style))]
 
-use core::fmt;
+use core::{ops, fmt, mem};
 
 type CharTable = &'static [u8; 16];
 const CHAR_TABLE_LOWER: CharTable = b"0123456789abcdef";
 const CHAR_TABLE_UPPER: CharTable = b"0123456789ABCDEF";
+
+///Length required to HEX encode
+pub const fn required_encode_len(len: usize) -> usize {
+    len.saturating_mul(2)
+}
+
+///Length required to decode HEX
+pub const fn required_decode_len(len: usize) -> usize {
+    len.saturating_div(2)
+}
+
+const fn dec2hex(table: CharTable, byt: u8) -> CharPair {
+    let buf = [
+        table[(byt.wrapping_shr(4) & 0xf) as usize],
+        table[(byt & 0xf) as usize],
+    ];
+    CharPair(buf)
+}
+
+const fn hex<const N: usize>(table: CharTable, input: [u8; N]) -> [CharPair; N] {
+    let mut output = [mem::MaybeUninit::uninit(); N];
+
+    let mut idx = 0;
+
+    while idx < N {
+        output[idx] = mem::MaybeUninit::new(dec2hex(table, input[idx]));
+        idx += 1;
+    }
+
+    unsafe {
+        mem::transmute_copy(&output)
+    }
+
+}
+
+#[inline(always)]
+///Creates HEX encoded array out of input
+pub const fn hex_upper<const N: usize>(input: [u8; N]) -> [CharPair; N] {
+    hex(CHAR_TABLE_UPPER, input)
+}
+
+#[inline(always)]
+///Creates HEX encoded array out of input
+pub const fn hex_lower<const N: usize>(input: [u8; N]) -> [CharPair; N] {
+    hex(CHAR_TABLE_LOWER, input)
+}
 
 ///Character pair representing single byte
 #[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd)]
 #[repr(transparent)]
 pub struct CharPair([u8; 2]);
 
-impl AsRef<str> for CharPair {
+impl CharPair {
     #[inline(always)]
-    fn as_ref(&self) -> &str {
+    ///Returns pair of chars
+    pub const fn as_chars(&self) -> [char; 2] {
+        [
+            self.0[0] as char,
+            self.0[1] as char,
+        ]
+    }
+
+    #[inline(always)]
+    ///Returns pair of chars as string
+    pub const fn as_bytes(&self) -> &[u8; 2] {
+        &self.0
+    }
+
+    #[inline(always)]
+    ///Returns pair of chars as string
+    pub const fn as_str(&self) -> &'_ str {
         unsafe {
             core::str::from_utf8_unchecked(&self.0)
         }
+    }
+}
+
+impl fmt::Debug for CharPair {
+    #[inline(always)]
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self.as_str(), fmt)
+    }
+}
+
+impl fmt::Display for CharPair {
+    #[inline(always)]
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self.as_str(), fmt)
+    }
+}
+
+impl ops::Deref for CharPair {
+    type Target = str;
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
+
+impl AsRef<str> for CharPair {
+    #[inline(always)]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl AsRef<[u8]> for CharPair {
+    #[inline(always)]
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl AsRef<[u8; 2]> for CharPair {
+    #[inline(always)]
+    fn as_ref(&self) -> &[u8; 2] {
+        &self.0
     }
 }
 
@@ -35,7 +141,7 @@ pub struct Encoder<'a> {
 impl<'a> Encoder<'a> {
     #[inline(always)]
     ///Creates encoder with upper character set
-    pub fn upper(data: &'a [u8]) -> Self {
+    pub const fn upper(data: &'a [u8]) -> Self {
         Self {
             table: CHAR_TABLE_UPPER,
             data,
@@ -44,12 +150,13 @@ impl<'a> Encoder<'a> {
 
     #[inline(always)]
     ///Creates encoder with lower character set
-    pub fn lower(data: &'a [u8]) -> Self {
+    pub const fn lower(data: &'a [u8]) -> Self {
         Self {
             table: CHAR_TABLE_LOWER,
             data,
         }
     }
+
 
     #[inline(always)]
     ///Get next byte encoded
@@ -57,11 +164,7 @@ impl<'a> Encoder<'a> {
         match self.data.split_first() {
             Some((byt, rest)) => {
                 self.data = rest;
-                let buf = unsafe {[
-                    *self.table.get_unchecked((byt.wrapping_shr(4) & 0xf) as usize),
-                    *self.table.get_unchecked((byt & 0xf) as usize),
-                ]};
-                Some(CharPair(buf))
+                Some(dec2hex(self.table, *byt))
             },
             None => None
         }
@@ -82,24 +185,25 @@ impl<'a> Iterator for Encoder<'a> {
     }
 }
 
+impl<'a> ExactSizeIterator for Encoder<'a> {
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+}
+
 impl<'a> fmt::Display for Encoder<'a> {
     #[inline(always)]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut buf: [u8; 2];
-
         for byt in self.data {
-            buf = unsafe {[
-                *self.table.get_unchecked((byt.wrapping_shr(4) & 0xf) as usize),
-                *self.table.get_unchecked((byt & 0xf) as usize),
-            ]};
-            fmt.write_str(CharPair(buf).as_ref())?;
+            fmt.write_str(dec2hex(self.table, *byt).as_str())?;
         }
 
         Ok(())
     }
 }
 
-fn hex2dec(ch: u8) -> Result<u8, DecodeError> {
+const fn hex2dec(ch: u8) -> Result<u8, DecodeError> {
     match ch {
         b'A'..=b'F' => Ok(ch - b'A' + 10),
         b'a'..=b'f' => Ok(ch - b'a' + 10),
@@ -121,7 +225,7 @@ pub struct Decoder<'a>(&'a [u8]);
 impl<'a> Decoder<'a> {
     #[inline(always)]
     ///Creates new instance validating that input has even length.
-    pub fn new(data: &'a str) -> Option<Self> {
+    pub const fn new(data: &'a str) -> Option<Self> {
         if data.len() % 2 != 0 {
             None
         } else {
@@ -160,5 +264,12 @@ impl<'a> Iterator for Decoder<'a> {
     #[inline(always)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.0.len(), Some(self.0.len()))
+    }
+}
+
+impl<'a> ExactSizeIterator for Decoder<'a> {
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.0.len()
     }
 }
