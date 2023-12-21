@@ -4,7 +4,10 @@
 #![warn(missing_docs)]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::style))]
 
-use core::{ops, fmt, mem};
+use core::{fmt, mem};
+
+mod pair;
+pub use pair::CharPair;
 
 type CharTable = &'static [u8; 16];
 const CHAR_TABLE_LOWER: CharTable = b"0123456789abcdef";
@@ -55,80 +58,6 @@ pub const fn hex_lower<const N: usize>(input: [u8; N]) -> [CharPair; N] {
     hex(CHAR_TABLE_LOWER, input)
 }
 
-///Character pair representing single byte
-#[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd)]
-#[repr(transparent)]
-pub struct CharPair([u8; 2]);
-
-impl CharPair {
-    #[inline(always)]
-    ///Returns pair of chars
-    pub const fn as_chars(&self) -> [char; 2] {
-        [
-            self.0[0] as char,
-            self.0[1] as char,
-        ]
-    }
-
-    #[inline(always)]
-    ///Returns pair of chars as string
-    pub const fn as_bytes(&self) -> &[u8; 2] {
-        &self.0
-    }
-
-    #[inline(always)]
-    ///Returns pair of chars as string
-    pub const fn as_str(&self) -> &'_ str {
-        unsafe {
-            core::str::from_utf8_unchecked(&self.0)
-        }
-    }
-}
-
-impl fmt::Debug for CharPair {
-    #[inline(always)]
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self.as_str(), fmt)
-    }
-}
-
-impl fmt::Display for CharPair {
-    #[inline(always)]
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.as_str(), fmt)
-    }
-}
-
-impl ops::Deref for CharPair {
-    type Target = str;
-
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        self.as_str()
-    }
-}
-
-impl AsRef<str> for CharPair {
-    #[inline(always)]
-    fn as_ref(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl AsRef<[u8]> for CharPair {
-    #[inline(always)]
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl AsRef<[u8; 2]> for CharPair {
-    #[inline(always)]
-    fn as_ref(&self) -> &[u8; 2] {
-        &self.0
-    }
-}
-
 ///Hex encoder, implements iterator returning individual byte as pair of characters.
 ///
 ///`Display` implementation renders current data without advancing iterator
@@ -155,7 +84,6 @@ impl<'a> Encoder<'a> {
             data,
         }
     }
-
 
     #[inline(always)]
     ///Get next byte encoded

@@ -31,6 +31,7 @@ fn should_convert_hex_and_back_upper() {
     assert_eq!(ALL_UPPER, output);
     output = hex_upper(ALL).iter().map(CharPair::as_str).collect::<String>();
     assert_eq!(ALL_UPPER, output);
+    assert_eq!(CharPair::array_as_str(&hex_upper(ALL)), ALL_UPPER);
 
     for pair in encoder {
         let expected = all_upper.next().expect("to have more expected data");
@@ -52,6 +53,7 @@ fn should_convert_hex_and_back_lower() {
     assert_eq!(ALL_LOWER, output);
     output = hex_lower(ALL).iter().map(CharPair::as_str).collect::<String>();
     assert_eq!(ALL_LOWER, output);
+    assert_eq!(CharPair::array_as_str(&hex_lower(ALL)), ALL_LOWER);
 
     for pair in encoder {
         let expected = all_lower.next().expect("to have more expected data");
