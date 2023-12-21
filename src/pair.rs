@@ -91,4 +91,3 @@ impl AsRef<[u8; 2]> for CharPair {
         &self.0
     }
 }
-

@@ -7,7 +7,7 @@ readme = "README.md"
 repository = "https://github.com/DoumanAsh/based16"
 license = "BSL-1.0"
 keywords = ["base16", "hex"]
-categories = ["algorithms"]
+categories = ["algorithms", "no-std::no-alloc"]
 include = [
     "**/*.rs",
     "Cargo.toml",
