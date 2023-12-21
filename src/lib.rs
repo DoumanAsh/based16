@@ -41,7 +41,6 @@ const fn hex<const N: usize>(table: CharTable, input: [u8; N]) -> [CharPair; N] 
     unsafe {
         mem::transmute_copy(&output)
     }
-
 }
 
 #[inline(always)]
