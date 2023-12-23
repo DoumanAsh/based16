@@ -23,6 +23,7 @@ pub const fn required_decode_len(len: usize) -> usize {
     len.saturating_div(2)
 }
 
+#[inline(always)]
 const fn dec2hex(table: CharTable, byt: u8) -> CharPair {
     let buf = [
         table[(byt.wrapping_shr(4) & 0xf) as usize],
