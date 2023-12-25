@@ -59,6 +59,28 @@ pub const fn hex_lower<const N: usize>(input: [u8; N]) -> [CharPair; N] {
     hex(CHAR_TABLE_LOWER, input)
 }
 
+#[derive(Debug, Copy, Clone)]
+///Error happening during decoding
+pub enum DecodeError {
+    ///Invalid character encountered
+    InvalidChar(u8)
+}
+
+#[cold]
+#[inline(never)]
+const fn unexpected_char(ch: u8) -> DecodeError {
+    DecodeError::InvalidChar(ch)
+}
+
+const fn hex2dec(ch: u8) -> Result<u8, DecodeError> {
+    match ch {
+        b'A'..=b'F' => Ok(ch - b'A' + 10),
+        b'a'..=b'f' => Ok(ch - b'a' + 10),
+        b'0'..=b'9' => Ok(ch - b'0'),
+        ch => Err(unexpected_char(ch)),
+    }
+}
+
 ///Hex encoder, implements iterator returning individual byte as pair of characters.
 ///
 ///`Display` implementation renders current data without advancing iterator
@@ -129,22 +151,6 @@ impl<'a> fmt::Display for Encoder<'a> {
 
         Ok(())
     }
-}
-
-const fn hex2dec(ch: u8) -> Result<u8, DecodeError> {
-    match ch {
-        b'A'..=b'F' => Ok(ch - b'A' + 10),
-        b'a'..=b'f' => Ok(ch - b'a' + 10),
-        b'0'..=b'9' => Ok(ch - b'0'),
-        ch => Err(DecodeError::InvalidChar(ch)),
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-///Error happening during decoding
-pub enum DecodeError {
-    ///Invalid character encountered
-    InvalidChar(u8)
 }
 
 ///Decoder that transforms pairs of characters into individual decimal bytes
