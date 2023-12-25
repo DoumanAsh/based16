@@ -1,4 +1,8 @@
-use based16::{Encoder, Decoder, CharPair, hex_lower, hex_upper};
+use based16::{Encoder, Decoder, CharPair};
+use based16::{hex_lower, hex_upper};
+use based16::{const_hex_lower, const_hex_upper};
+
+use core::mem;
 
 const ALL: [u8; 256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
@@ -29,9 +33,31 @@ fn should_convert_hex_and_back_upper() {
 
     let mut output = encoder.to_string();
     assert_eq!(ALL_UPPER, output);
-    output = hex_upper(ALL).iter().map(CharPair::as_str).collect::<String>();
+    output = const_hex_upper(ALL).iter().map(CharPair::as_str).collect::<String>();
     assert_eq!(ALL_UPPER, output);
-    assert_eq!(CharPair::array_as_str(&hex_upper(ALL)), ALL_UPPER);
+    assert_eq!(CharPair::array_as_str(&const_hex_upper(ALL)), ALL_UPPER);
+
+    let mut encoded_hex = [mem::MaybeUninit::uninit(); ALL.len() * 2];
+    for len in 0..=ALL.len() {
+        let encoded_len =  hex_upper(&ALL, &mut encoded_hex[..len * 2]);
+        assert_eq!(encoded_len, len * 2);
+        let encoded_hex = unsafe {
+            core::str::from_utf8(
+                core::slice::from_raw_parts(encoded_hex.as_ptr() as _, encoded_len)
+            ).expect("valid utf-8")
+        };
+        assert_eq!(&ALL_UPPER[..len * 2], encoded_hex);
+    }
+
+    let mut encoded_hex = [mem::MaybeUninit::uninit(); 255];
+    let encoded_len =  hex_upper(&ALL, &mut encoded_hex);
+    assert_eq!(encoded_len, 254);
+    let encoded_hex = unsafe {
+        core::str::from_utf8(
+            core::slice::from_raw_parts(encoded_hex.as_ptr() as _, encoded_len)
+        ).expect("valid utf-8")
+    };
+    assert_eq!(&ALL_UPPER[..254], encoded_hex);
 
     for pair in encoder {
         let expected = all_upper.next().expect("to have more expected data");
@@ -51,9 +77,31 @@ fn should_convert_hex_and_back_lower() {
 
     let mut output = encoder.to_string();
     assert_eq!(ALL_LOWER, output);
-    output = hex_lower(ALL).iter().map(CharPair::as_str).collect::<String>();
+    output = const_hex_lower(ALL).iter().map(CharPair::as_str).collect::<String>();
     assert_eq!(ALL_LOWER, output);
-    assert_eq!(CharPair::array_as_str(&hex_lower(ALL)), ALL_LOWER);
+    assert_eq!(CharPair::array_as_str(&const_hex_lower(ALL)), ALL_LOWER);
+
+    let mut encoded_hex = [mem::MaybeUninit::uninit(); ALL.len() * 2];
+    for len in 0..=ALL.len() {
+        let encoded_len =  hex_lower(&ALL, &mut encoded_hex[..len * 2]);
+        assert_eq!(encoded_len, len * 2);
+        let encoded_hex = unsafe {
+            core::str::from_utf8(
+                core::slice::from_raw_parts(encoded_hex.as_ptr() as _, encoded_len)
+            ).expect("valid utf-8")
+        };
+        assert_eq!(&ALL_LOWER[..len * 2], encoded_hex);
+    }
+
+    let mut encoded_hex = [mem::MaybeUninit::uninit(); 255];
+    let encoded_len =  hex_lower(&ALL, &mut encoded_hex);
+    assert_eq!(encoded_len, 254);
+    let encoded_hex = unsafe {
+        core::str::from_utf8(
+            core::slice::from_raw_parts(encoded_hex.as_ptr() as _, encoded_len)
+        ).expect("valid utf-8")
+    };
+    assert_eq!(&ALL_LOWER[..254], encoded_hex);
 
     for pair in encoder {
         let expected = all_lower.next().expect("to have more expected data");

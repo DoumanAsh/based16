@@ -8,6 +8,9 @@ use core::{fmt, mem};
 
 mod pair;
 pub use pair::CharPair;
+mod arch;
+mod const_fn;
+pub use const_fn::*;
 
 type CharTable = &'static [u8; 16];
 const CHAR_TABLE_LOWER: CharTable = b"0123456789abcdef";
@@ -24,39 +27,15 @@ pub const fn required_decode_len(len: usize) -> usize {
 }
 
 #[inline(always)]
-const fn dec2hex(table: CharTable, byt: u8) -> CharPair {
-    let buf = [
-        table[(byt.wrapping_shr(4) & 0xf) as usize],
-        table[(byt & 0xf) as usize],
-    ];
-    CharPair(buf)
-}
-
-const fn hex<const N: usize>(table: CharTable, input: [u8; N]) -> [CharPair; N] {
-    let mut output = [mem::MaybeUninit::uninit(); N];
-
-    let mut idx = 0;
-
-    while idx < N {
-        output[idx] = mem::MaybeUninit::new(dec2hex(table, input[idx]));
-        idx += 1;
-    }
-
-    unsafe {
-        mem::transmute_copy(&output)
-    }
+///Creates HEX encoded array out of input, returning number of written bytes.
+pub fn hex_upper(input: &[u8], out: &mut [mem::MaybeUninit<u8>]) -> usize {
+    arch::hex(CHAR_TABLE_UPPER, input, out)
 }
 
 #[inline(always)]
-///Creates HEX encoded array out of input
-pub const fn hex_upper<const N: usize>(input: [u8; N]) -> [CharPair; N] {
-    hex(CHAR_TABLE_UPPER, input)
-}
-
-#[inline(always)]
-///Creates HEX encoded array out of input
-pub const fn hex_lower<const N: usize>(input: [u8; N]) -> [CharPair; N] {
-    hex(CHAR_TABLE_LOWER, input)
+///Creates HEX encoded array out of input, returning number of written bytes.
+pub fn hex_lower(input: &[u8], out: &mut [mem::MaybeUninit<u8>]) -> usize {
+    arch::hex(CHAR_TABLE_LOWER, input, out)
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -64,21 +43,6 @@ pub const fn hex_lower<const N: usize>(input: [u8; N]) -> [CharPair; N] {
 pub enum DecodeError {
     ///Invalid character encountered
     InvalidChar(u8)
-}
-
-#[cold]
-#[inline(never)]
-const fn unexpected_char(ch: u8) -> DecodeError {
-    DecodeError::InvalidChar(ch)
-}
-
-const fn hex2dec(ch: u8) -> Result<u8, DecodeError> {
-    match ch {
-        b'A'..=b'F' => Ok(ch - b'A' + 10),
-        b'a'..=b'f' => Ok(ch - b'a' + 10),
-        b'0'..=b'9' => Ok(ch - b'0'),
-        ch => Err(unexpected_char(ch)),
-    }
 }
 
 ///Hex encoder, implements iterator returning individual byte as pair of characters.
