@@ -11,6 +11,10 @@ pub use pair::CharPair;
 mod arch;
 mod const_fn;
 pub use const_fn::*;
+#[cfg(feature = "alloc")]
+mod alloc;
+#[cfg(feature = "alloc")]
+pub use alloc::*;
 
 type CharTable = &'static [u8; 16];
 const CHAR_TABLE_LOWER: CharTable = b"0123456789abcdef";
@@ -27,13 +31,13 @@ pub const fn required_decode_len(len: usize) -> usize {
 }
 
 #[inline(always)]
-///Creates HEX encoded array out of input, returning number of written bytes.
+///Writes upper case hex into `out`
 pub fn hex_upper(input: &[u8], out: &mut [mem::MaybeUninit<u8>]) -> usize {
     arch::hex(CHAR_TABLE_UPPER, input, out)
 }
 
 #[inline(always)]
-///Creates HEX encoded array out of input, returning number of written bytes.
+///Writes lower case hex into `out`
 pub fn hex_lower(input: &[u8], out: &mut [mem::MaybeUninit<u8>]) -> usize {
     arch::hex(CHAR_TABLE_LOWER, input, out)
 }

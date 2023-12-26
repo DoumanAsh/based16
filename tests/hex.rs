@@ -1,5 +1,7 @@
 use based16::{Encoder, Decoder, CharPair};
 use based16::{hex_lower, hex_upper};
+#[cfg(feature = "alloc")]
+use based16::{hex_lower_to_vec, hex_upper_to_vec};
 use based16::{const_hex_lower, const_hex_upper};
 
 use core::mem;
@@ -59,6 +61,16 @@ fn should_convert_hex_and_back_upper() {
     };
     assert_eq!(&ALL_UPPER[..254], encoded_hex);
 
+    #[cfg(feature = "alloc")]
+    {
+        let mut encoded_hex_vec = Vec::new();
+        let encoded_len =  hex_upper_to_vec(&ALL, &mut encoded_hex_vec);
+        assert_eq!(encoded_len, ALL_UPPER.len());
+
+        let encoded_hex = core::str::from_utf8(encoded_hex_vec.as_slice()).expect("valid utf-8");
+        assert_eq!(ALL_UPPER, encoded_hex);
+    }
+
     for pair in encoder {
         let expected = all_upper.next().expect("to have more expected data");
         assert_eq!(expected, pair.as_bytes());
@@ -85,12 +97,14 @@ fn should_convert_hex_and_back_lower() {
     for len in 0..=ALL.len() {
         let encoded_len =  hex_lower(&ALL, &mut encoded_hex[..len * 2]);
         assert_eq!(encoded_len, len * 2);
+
         let encoded_hex = unsafe {
             core::str::from_utf8(
                 core::slice::from_raw_parts(encoded_hex.as_ptr() as _, encoded_len)
             ).expect("valid utf-8")
         };
         assert_eq!(&ALL_LOWER[..len * 2], encoded_hex);
+
     }
 
     let mut encoded_hex = [mem::MaybeUninit::uninit(); 255];
@@ -102,6 +116,16 @@ fn should_convert_hex_and_back_lower() {
         ).expect("valid utf-8")
     };
     assert_eq!(&ALL_LOWER[..254], encoded_hex);
+
+    #[cfg(feature = "alloc")]
+    {
+        let mut encoded_hex_vec = Vec::new();
+        let encoded_len =  hex_lower_to_vec(&ALL, &mut encoded_hex_vec);
+        assert_eq!(encoded_len, ALL_LOWER.len());
+
+        let encoded_hex = core::str::from_utf8(encoded_hex_vec.as_slice()).expect("valid utf-8");
+        assert_eq!(ALL_LOWER, encoded_hex);
+    }
 
     for pair in encoder {
         let expected = all_lower.next().expect("to have more expected data");

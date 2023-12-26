@@ -14,3 +14,9 @@ include = [
     "README.md",
     "LICENSE",
 ]
+
+[features]
+alloc = []
+
+[package.metadata.docs.rs]
+features = ["alloc"]
