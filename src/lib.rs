@@ -42,11 +42,25 @@ pub fn hex_lower(input: &[u8], out: &mut [mem::MaybeUninit<u8>]) -> usize {
     arch::hex(CHAR_TABLE_LOWER, input, out)
 }
 
+#[inline(always)]
+///Decodes hex-encoded `input` into `out`, truncating by its size, if necessary.
+pub fn unhex(input: &[u8], out: &mut [mem::MaybeUninit<u8>]) -> Result<usize, DecodeError> {
+    arch::unhex(input, out)
+}
+
 #[derive(Debug, Copy, Clone)]
 ///Error happening during decoding
 pub enum DecodeError {
     ///Invalid character encountered
     InvalidChar(u8)
+}
+
+impl DecodeError {
+    #[cold]
+    #[inline(never)]
+    pub(crate) const fn unexpected_char(ch: u8) -> Self {
+        Self::InvalidChar(ch)
+    }
 }
 
 ///Hex encoder, implements iterator returning individual byte as pair of characters.

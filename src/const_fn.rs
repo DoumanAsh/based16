@@ -38,18 +38,12 @@ pub const fn const_hex_lower<const N: usize>(input: [u8; N]) -> [CharPair; N] {
     hex(CHAR_TABLE_LOWER, input)
 }
 
-#[cold]
-#[inline(never)]
-const fn unexpected_char(ch: u8) -> DecodeError {
-    DecodeError::InvalidChar(ch)
-}
-
 #[inline(always)]
 pub(crate) const fn hex2dec(ch: u8) -> Result<u8, DecodeError> {
     match ch {
         b'A'..=b'F' => Ok(ch - b'A' + 10),
         b'a'..=b'f' => Ok(ch - b'a' + 10),
         b'0'..=b'9' => Ok(ch - b'0'),
-        ch => Err(unexpected_char(ch)),
+        ch => Err(DecodeError::unexpected_char(ch)),
     }
 }

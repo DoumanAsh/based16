@@ -1,10 +1,11 @@
 use core::{cmp, mem};
 
-use crate::CharTable;
+use crate::{CharTable, DecodeError};
+use crate::const_fn::hex2dec;
 
-use crate::required_encode_len;
+use crate::{required_encode_len, required_decode_len};
 
-#[cfg(not(any(target_feature = "sse2", target_feature = "sse3")))]
+#[cfg(not(target_feature = "sse2"))]
 pub fn hex(table: CharTable, input: &[u8], output: &mut [mem::MaybeUninit<u8>]) -> usize {
     let len = if output.len() % 2 != 0 {
         cmp::min(required_encode_len(input.len()), output.len() - 1)
@@ -80,4 +81,41 @@ pub fn hex(table: CharTable, input: &[u8], output: &mut [mem::MaybeUninit<u8>]) 
     }
 
     written
+}
+
+//#[cfg(not(target_feature = "sse2"))]
+pub fn unhex(input: &[u8], output: &mut [mem::MaybeUninit<u8>]) -> Result<usize, DecodeError> {
+    const INVALID_CHAR: u8 = 0xff;
+    const UNHEX_TABLE: &[u8; 256] = &{
+        let mut res = [0u8; 256];
+        let mut idx = 0usize;
+        while idx <= (u8::MAX as usize) {
+            res[idx] = match hex2dec(idx as u8) {
+                Ok(res) => res,
+                Err(_) => INVALID_CHAR,
+            };
+            idx += 1;
+        }
+        res
+    };
+
+    let len = cmp::min(required_decode_len(input.len()), output.len());
+
+    let mut written = 0usize;
+    while written < len {
+        unsafe {
+            let left = UNHEX_TABLE.get_unchecked(*input.get_unchecked(written * 2) as usize);
+            let right = UNHEX_TABLE.get_unchecked(*input.get_unchecked(written * 2 + 1) as usize);
+
+            *output.get_unchecked_mut(written) = mem::MaybeUninit::new(left.wrapping_shl(4) | right);
+
+            if (left | right) == INVALID_CHAR {
+                return Err(DecodeError::InvalidChar(*left));
+            }
+        }
+
+        written = written.saturating_add(1);
+    }
+
+    Ok(written)
 }

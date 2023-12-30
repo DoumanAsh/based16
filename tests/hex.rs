@@ -1,7 +1,7 @@
 use based16::{Encoder, Decoder, CharPair};
-use based16::{hex_lower, hex_upper};
+use based16::{hex_lower, hex_upper, unhex};
 #[cfg(feature = "alloc")]
-use based16::{hex_lower_to_vec, hex_upper_to_vec};
+use based16::{hex_lower_to_vec, hex_upper_to_vec, unhex_to_vec};
 use based16::{const_hex_lower, const_hex_upper};
 
 use core::mem;
@@ -61,14 +61,29 @@ fn should_convert_hex_and_back_upper() {
     };
     assert_eq!(&ALL_UPPER[..254], encoded_hex);
 
+    let mut decoded_hex = [mem::MaybeUninit::uninit(); ALL.len()];
+    for len in 0..=ALL.len() {
+        let decode_len = unhex(ALL_UPPER.as_bytes(), &mut decoded_hex[..len]).expect("Success");
+        assert_eq!(decode_len, len);
+        let decoded_hex = unsafe {
+            core::slice::from_raw_parts(decoded_hex.as_ptr() as _, decode_len)
+        };
+        assert_eq!(&ALL[..len], decoded_hex);
+    }
+
     #[cfg(feature = "alloc")]
     {
-        let mut encoded_hex_vec = Vec::new();
-        let encoded_len =  hex_upper_to_vec(&ALL, &mut encoded_hex_vec);
+        let mut buff = Vec::new();
+        let encoded_len =  hex_upper_to_vec(&ALL, &mut buff);
         assert_eq!(encoded_len, ALL_UPPER.len());
 
-        let encoded_hex = core::str::from_utf8(encoded_hex_vec.as_slice()).expect("valid utf-8");
+        let encoded_hex = core::str::from_utf8(buff.as_slice()).expect("valid utf-8");
         assert_eq!(ALL_UPPER, encoded_hex);
+
+        buff.clear();
+        let decode_len = unhex_to_vec(ALL_UPPER.as_bytes(), &mut buff).expect("To decode");
+        assert_eq!(decode_len, ALL.len());
+        assert_eq!(buff, ALL);
     }
 
     for pair in encoder {
@@ -117,14 +132,29 @@ fn should_convert_hex_and_back_lower() {
     };
     assert_eq!(&ALL_LOWER[..254], encoded_hex);
 
+    let mut decoded_hex = [mem::MaybeUninit::uninit(); ALL.len()];
+    for len in 0..=ALL.len() {
+        let decode_len = unhex(ALL_LOWER.as_bytes(), &mut decoded_hex[..len]).expect("Success");
+        assert_eq!(decode_len, len);
+        let decoded_hex = unsafe {
+            core::slice::from_raw_parts(decoded_hex.as_ptr() as _, decode_len)
+        };
+        assert_eq!(&ALL[..len], decoded_hex);
+    }
+
     #[cfg(feature = "alloc")]
     {
-        let mut encoded_hex_vec = Vec::new();
-        let encoded_len =  hex_lower_to_vec(&ALL, &mut encoded_hex_vec);
+        let mut buff = Vec::new();
+        let encoded_len =  hex_lower_to_vec(&ALL, &mut buff);
         assert_eq!(encoded_len, ALL_LOWER.len());
 
-        let encoded_hex = core::str::from_utf8(encoded_hex_vec.as_slice()).expect("valid utf-8");
+        let encoded_hex = core::str::from_utf8(buff.as_slice()).expect("valid utf-8");
         assert_eq!(ALL_LOWER, encoded_hex);
+
+        buff.clear();
+        let decode_len = unhex_to_vec(ALL_LOWER.as_bytes(), &mut buff).expect("To decode");
+        assert_eq!(decode_len, ALL.len());
+        assert_eq!(buff, ALL);
     }
 
     for pair in encoder {
