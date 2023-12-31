@@ -5,3 +5,8 @@
 [![Documentation](https://docs.rs/based16/badge.svg)](https://docs.rs/crate/based16/)
 
 Simple HEX encoder/decoder for Rust chads
+
+## Implementation notes
+
+- SSE2 implemented as simplest and most widely available HW acceleration (for now encoding, maybe decoding later too)
+- Everything else is too much pain in ass for me to do, but PRs are welcome
