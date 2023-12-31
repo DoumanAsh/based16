@@ -5,6 +5,8 @@ use crate::const_fn::hex2dec;
 
 use crate::{required_encode_len, required_decode_len};
 
+const CHUNK_LEN: usize = 16;
+
 #[cfg(not(target_feature = "sse2"))]
 pub fn hex(table: CharTable, input: &[u8], output: &mut [mem::MaybeUninit<u8>]) -> usize {
     let len = if output.len() % 2 != 0 {
@@ -13,17 +15,48 @@ pub fn hex(table: CharTable, input: &[u8], output: &mut [mem::MaybeUninit<u8>]) 
         cmp::min(required_encode_len(input.len()), output.len())
     };
 
+    let mut cursor = input.as_ptr();
     let mut written = 0;
+
+    macro_rules! process_byte {
+        ($offset:expr) => {
+            unsafe {
+                let byt = cursor.add($offset / 2).read();
+                let dst = output.as_mut_ptr().add(written + $offset) as *mut u8;
+
+                *dst = table[(byt.wrapping_shr(4) & 0xf) as usize];
+                *dst.add(1) = table[(byt & 0xf) as usize];
+            }
+        };
+    }
+
+    macro_rules! on_proceess_end {
+        ($chunk_size:expr) => {
+            unsafe {
+                cursor = cursor.add($chunk_size / 2);
+            }
+            written = written.saturating_add($chunk_size);
+        };
+    }
+
+    //We write CHUNKLEN out of CHUNK_LEN / 2
+    for _ in 0..len / CHUNK_LEN {
+        process_byte!(0);
+        process_byte!(2);
+        process_byte!(4);
+        process_byte!(6);
+        process_byte!(8);
+        process_byte!(10);
+        process_byte!(12);
+        process_byte!(14);
+
+        on_proceess_end!(CHUNK_LEN);
+    }
+
     while written < len {
-        unsafe {
-            let byt = *(input.as_ptr().add(written / 2));
-            let dst = output.as_mut_ptr().add(written) as *mut u8;
+        process_byte!(0);
 
-            *dst = table[(byt.wrapping_shr(4) & 0xf) as usize];
-            *dst.add(1) = table[(byt & 0xf) as usize];
-        }
-
-        written = written.saturating_add(2);
+        on_proceess_end!(2);
     }
 
     written
@@ -36,7 +69,6 @@ pub fn hex(table: CharTable, input: &[u8], output: &mut [mem::MaybeUninit<u8>]) 
     #[cfg(target_arch = "x86_64")]
     use core::arch::x86_64 as sys;
 
-    const CHUNK_LEN: usize = 16;
     let len = if output.len() % 2 != 0 {
         cmp::min(required_encode_len(input.len()), output.len() - 1)
     } else {
@@ -83,7 +115,6 @@ pub fn hex(table: CharTable, input: &[u8], output: &mut [mem::MaybeUninit<u8>]) 
     written
 }
 
-//#[cfg(not(target_feature = "sse2"))]
 pub fn unhex(input: &[u8], output: &mut [mem::MaybeUninit<u8>]) -> Result<usize, DecodeError> {
     const INVALID_CHAR: u8 = 0xff;
     const UNHEX_TABLE: &[u8; 256] = &{
@@ -101,20 +132,46 @@ pub fn unhex(input: &[u8], output: &mut [mem::MaybeUninit<u8>]) -> Result<usize,
 
     let len = cmp::min(required_decode_len(input.len()), output.len());
 
+    let mut cursor = 0usize;
     let mut written = 0usize;
-    while written < len {
-        unsafe {
-            let left = UNHEX_TABLE.get_unchecked(*input.get_unchecked(written * 2) as usize);
-            let right = UNHEX_TABLE.get_unchecked(*input.get_unchecked(written * 2 + 1) as usize);
-
-            *output.get_unchecked_mut(written) = mem::MaybeUninit::new(left.wrapping_shl(4) | right);
-
-            if (left | right) == INVALID_CHAR {
-                return Err(DecodeError::InvalidChar(*left));
+    macro_rules! process_byte {
+        ($offset:expr) => {
+            unsafe {
+                let left = UNHEX_TABLE.get_unchecked(*input.get_unchecked(cursor + $offset) as usize);
+                let right = UNHEX_TABLE.get_unchecked(*input.get_unchecked(cursor + 1 + $offset) as usize);
+                *output.get_unchecked_mut(written + ($offset / 2)) = mem::MaybeUninit::new(left.wrapping_shl(4) | right);
+                if (left | right) == INVALID_CHAR {
+                    return Err(DecodeError::InvalidChar(*left));
+                }
             }
-        }
+        };
+    }
 
-        written = written.saturating_add(1);
+    macro_rules! on_proceess_end {
+        ($chunk_size:expr) => {
+            written = written.saturating_add($chunk_size / 2);
+            cursor = cursor.wrapping_add($chunk_size)
+        };
+    }
+
+    // We decode CHUNK_LEN / 2 out of CHUNK_LEN
+    for _ in 0..len / CHUNK_LEN {
+        process_byte!(0);
+        process_byte!(2);
+        process_byte!(4);
+        process_byte!(6);
+        process_byte!(8);
+        process_byte!(10);
+        process_byte!(12);
+        process_byte!(14);
+
+        on_proceess_end!(CHUNK_LEN);
+    }
+
+    while written < len {
+        process_byte!(0);
+
+        on_proceess_end!(2);
     }
 
     Ok(written)

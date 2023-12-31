@@ -69,3 +69,9 @@ jobs:
     - name: Miri Test
       run: |
           cargo +nightly miri test --features alloc
+
+    - name: Miri Test (no SSE2)
+      env:
+        RUSTFLAGS: "-C target-feature=-sse2"
+      run: |
+          cargo +nightly miri test --features alloc
