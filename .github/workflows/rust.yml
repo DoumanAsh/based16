@@ -66,12 +66,12 @@ jobs:
         CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: "valgrind --leak-check=full --error-exitcode=1"
       run: cargo test --release --features alloc
 
-    - name: Miri Test
-      run: |
-          cargo +nightly miri test --features alloc
-
-    - name: Miri Test (no SSE2)
+    - name: Valgrind Test (no SSE2)
       env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: "valgrind --leak-check=full --error-exitcode=1"
         RUSTFLAGS: "-C target-feature=-sse2"
+      run: cargo test --release --features alloc
+
+    - name: Miri Test
       run: |
           cargo +nightly miri test --features alloc
