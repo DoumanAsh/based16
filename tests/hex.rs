@@ -197,3 +197,33 @@ fn should_convert_min_hex() {
         assert_eq!(expected_output, decoded_hex);
     }
 }
+
+#[test]
+fn should_convert_min_binary() {
+    const INPUT: &[&[u8]] = &[
+        &[153],
+        &[153, 170],
+        &[153, 170, 187],
+        &[153, 170, 187, 204],
+        &[153, 170, 187, 204, 221],
+        &[153, 170, 187, 204, 221, 238],
+        &[153, 170, 187, 204, 221, 238, 255],
+    ];
+
+    let expected_output = "99AABBCCDDEEFF";
+    let mut encoded_hex = [mem::MaybeUninit::uninit(); 14];
+
+    for idx in 0..INPUT.len() {
+        let input = INPUT[idx];
+        let expected_output = &expected_output[..input.len() * 2];
+
+        let encoded_len = hex_upper(input, &mut encoded_hex);
+        assert_eq!(encoded_len, expected_output.len());
+        let encoded_hex = unsafe {
+            core::str::from_utf8_unchecked(
+                core::slice::from_raw_parts(encoded_hex.as_ptr() as *const u8, encoded_len)
+            )
+        };
+        assert_eq!(expected_output, encoded_hex);
+    }
+}
