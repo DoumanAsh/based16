@@ -171,3 +171,29 @@ fn should_convert_hex_and_back_lower() {
         assert_eq!(byte.expect("to decode"), ALL[idx]);
     }
 }
+
+#[test]
+fn should_convert_min_hex() {
+    const INPUT: &[&str] = &[
+        "99",
+        "99AA",
+        "99AABB",
+        "99AABBCC",
+        "99AABBCCDD",
+        "99AABBCCDDEE",
+        "99AABBCCDDEEFF",
+    ];
+
+    let expected_output = [153u8, 170, 187, 204, 221, 238, 255];
+    let mut decoded_hex = [mem::MaybeUninit::uninit(); 7];
+
+    for idx in 0..INPUT.len() {
+        let expected_output = &expected_output[..idx+1];
+        let decode_len = unhex(INPUT[idx].as_bytes(), &mut decoded_hex).expect("Success");
+        assert_eq!(decode_len, expected_output.len());
+        let decoded_hex = unsafe {
+            core::slice::from_raw_parts(decoded_hex.as_ptr() as *const u8, decode_len)
+        };
+        assert_eq!(expected_output, decoded_hex);
+    }
+}
