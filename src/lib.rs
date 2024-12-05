@@ -103,7 +103,7 @@ impl<'a> Encoder<'a> {
     }
 }
 
-impl<'a> Iterator for Encoder<'a> {
+impl Iterator for Encoder<'_> {
     type Item = CharPair;
 
     #[inline(always)]
@@ -117,14 +117,14 @@ impl<'a> Iterator for Encoder<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for Encoder<'a> {
+impl ExactSizeIterator for Encoder<'_> {
     #[inline(always)]
     fn len(&self) -> usize {
         self.data.len()
     }
 }
 
-impl<'a> fmt::Display for Encoder<'a> {
+impl fmt::Display for Encoder<'_> {
     #[inline(always)]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         for byt in self.data {
@@ -135,7 +135,7 @@ impl<'a> fmt::Display for Encoder<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Encoder<'a> {
+impl fmt::Debug for Encoder<'_> {
     #[inline(always)]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.write_str("\"")?;
@@ -181,7 +181,7 @@ impl<'a> Decoder<'a> {
     }
 }
 
-impl<'a> Iterator for Decoder<'a> {
+impl Iterator for Decoder<'_> {
     type Item = Result<u8, DecodeError>;
 
     #[inline]
@@ -195,7 +195,7 @@ impl<'a> Iterator for Decoder<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for Decoder<'a> {
+impl ExactSizeIterator for Decoder<'_> {
     #[inline(always)]
     fn len(&self) -> usize {
         self.0.len()
