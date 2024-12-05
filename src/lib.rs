@@ -135,6 +135,18 @@ impl<'a> fmt::Display for Encoder<'a> {
     }
 }
 
+impl<'a> fmt::Debug for Encoder<'a> {
+    #[inline(always)]
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str("\"")?;
+        for byt in self.data {
+            fmt.write_str(dec2hex(self.table, *byt).as_str())?;
+        }
+
+        fmt.write_str("\"")
+    }
+}
+
 ///Decoder that transforms pairs of characters into individual decimal bytes
 pub struct Decoder<'a>(&'a [u8]);
 

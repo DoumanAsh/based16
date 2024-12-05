@@ -35,6 +35,10 @@ fn should_convert_hex_and_back_upper() {
 
     let mut output = encoder.to_string();
     assert_eq!(ALL_UPPER, output);
+    output = format!("{:?}", encoder);
+    assert_eq!(output.len(), ALL_UPPER.len() + 2);
+    assert_eq!(ALL_UPPER, output.trim_matches('"'));
+
     output = const_hex_upper(ALL).iter().map(CharPair::as_str).collect::<String>();
     assert_eq!(ALL_UPPER, output);
     assert_eq!(CharPair::array_as_str(&const_hex_upper(ALL)), ALL_UPPER);
