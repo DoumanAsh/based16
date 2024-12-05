@@ -1,5 +1,8 @@
 name: Rust
 
+env:
+  min_rust_version: "1.74.0"
+
 on:
   push:
     branches:
@@ -20,8 +23,28 @@ on:
       - 'Cargo.toml'
 
 jobs:
-  build:
+  min-rust-check:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust Unix
+      run: |
+        if rustup --version >/dev/null 2>&1; then
+            rustup install ${{ env.min_rust_version }}
+            rustup default ${{ env.min_rust_version }}
+        else
+            curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain ${{ env.min_rust_version }}
+            echo ::add-path::$HOME/.cargo/bin
+        fi
+    - name: Rust version
+      run: |
+        cargo --version
+        rustc --version
+    - name: Check
+      run: cargo check --features alloc
 
+  build:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
 

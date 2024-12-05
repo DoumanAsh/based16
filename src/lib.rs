@@ -167,7 +167,7 @@ impl<'a> Decoder<'a> {
             *(self.0.as_ptr() as *const [u8; 2])
         };
         self.0 = &self.0[2..];
-        Ok((hex2dec(chunk[0])? << 4) | hex2dec(chunk[1])?)
+        unhex_pair(chunk)
     }
 
     #[inline]

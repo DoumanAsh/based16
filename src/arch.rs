@@ -1,7 +1,7 @@
 use core::{cmp, mem};
 
 use crate::{CharTable, DecodeError};
-use crate::const_fn::hex2dec;
+use crate::const_fn::unhex_pair;
 use crate::{required_encode_len, required_decode_len};
 
 const CHUNK_LEN: usize = 16;
@@ -174,7 +174,7 @@ pub fn unhex(input: &[u8], output: &mut [mem::MaybeUninit<u8>]) -> Result<usize,
         let chunk = unsafe {
             *(input.as_ptr().add(cursor.saturating_mul(2)) as *const [u8; 2])
         };
-        let char = hex2dec(chunk[0])?.wrapping_shl(4) | hex2dec(chunk[1])?;
+        let char = unhex_pair(chunk)?;
         output[cursor] = mem::MaybeUninit::new(char);
         cursor = cursor.saturating_add(1);
     }
@@ -184,20 +184,6 @@ pub fn unhex(input: &[u8], output: &mut [mem::MaybeUninit<u8>]) -> Result<usize,
 
 #[cfg(not(target_feature = "sse2"))]
 pub fn unhex(input: &[u8], output: &mut [mem::MaybeUninit<u8>]) -> Result<usize, DecodeError> {
-    const UNHEX_INVALID_CHAR: u8 = 0xff;
-    const UNHEX_TABLE: &[u8; 256] = &{
-        let mut res = [0u8; 256];
-        let mut idx = 0usize;
-        while idx <= (u8::MAX as usize) {
-            res[idx] = match hex2dec(idx as u8) {
-                Ok(res) => res,
-                Err(_) => UNHEX_INVALID_CHAR,
-            };
-            idx += 1;
-        }
-        res
-    };
-
     let len = cmp::min(required_decode_len(input.len()), output.len());
 
     let mut cursor = 0usize;
@@ -205,12 +191,11 @@ pub fn unhex(input: &[u8], output: &mut [mem::MaybeUninit<u8>]) -> Result<usize,
     macro_rules! process_byte {
         ($offset:expr) => {
             unsafe {
-                let left = UNHEX_TABLE.get_unchecked(*input.get_unchecked(cursor + $offset) as usize);
-                let right = UNHEX_TABLE.get_unchecked(*input.get_unchecked(cursor + 1 + $offset) as usize);
-                *output.get_unchecked_mut(written + ($offset / 2)) = mem::MaybeUninit::new(left.wrapping_shl(4) | right);
-                if (left | right) == UNHEX_INVALID_CHAR {
-                    return Err(DecodeError::InvalidChar(*left));
-                }
+                let chunk = unsafe {
+                    *(input.as_ptr().add(cursor + $offset) as *const [u8; 2])
+                };
+                let ch = unhex_pair(chunk)?;
+                *output.get_unchecked_mut(written + ($offset / 2)) = mem::MaybeUninit::new(ch);
             }
         };
     }
